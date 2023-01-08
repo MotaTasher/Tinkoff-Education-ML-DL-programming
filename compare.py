@@ -23,20 +23,25 @@ score = open(args.score, 'w')
 
 
 class NodeContainer:
-    def __init__(self, node: ast.AST, h: int) -> None:
+    def __init__(self, node: ast.AST) -> None:
         self.node = node
-        self.h = h
-
-    def compareNode(self, otherNode) -> float:
-        return 0
 
     def dfs(self, function) -> None:
         if len(self.node._fields) == 0:
             return
-        # print(self.h, end='\t' * self.h)
         function(self.node)
         for i in ast.iter_child_nodes(self.node):
-            NodeContainer(i, self.h + 1).dfs(function)
+            NodeContainer(i,).dfs(function)
+
+
+def creator_list(new_list: list):
+    def append_to_tuple(x: ast.AST) -> None:
+        new_list.append([
+            [x.__class__ for x in s[1]]
+            if issubclass(s[1].__class__, Iterable) else s[1].__class__
+            for s in ast.iter_fields(x)
+        ])
+    return append_to_tuple
 
 
 def levenshtrain_distance(tuple1: tuple, tuple2: tuple) -> int:
@@ -88,43 +93,16 @@ while True:
     iter_first = ast.iter_child_nodes(tree_first)
     iter_second = ast.iter_child_nodes(tree_second)
 
-    def dump_fields_hard(x: ast.AST):
-        print(
-            [
-                [x.__class__ for x in s[1]]
-                if issubclass(s[1].__class__, Iterable) else s[1].__class__
-                for s in ast.iter_fields(x)
-            ]
-        )
-
-    def dump_fields_eazy(x: ast.AST):
-        print(
-            [s for s in ast.iter_fields(x)]
-        )
-
-    def creator_list(new_list: list):
-        def append_to_tuple(x: ast.AST) -> None:
-            new_list.append([
-                [x.__class__ for x in s[1]]
-                if issubclass(s[1].__class__, Iterable) else s[1].__class__
-                for s in ast.iter_fields(x)
-            ])
-        return append_to_tuple
-
-    def dump_dump(x: ast.AST):
-        print(ast.dump(x, indent=4), '\n\n')
-
-    def dump_attributes(x: ast.AST):
-        print(x._attributes)
-
     list_first = []
     list_second = []
-    NodeContainer(tree_first, 0).dfs(creator_list(list_first))
-    NodeContainer(tree_second, 0).dfs(creator_list(list_second))
+    NodeContainer(tree_first).dfs(creator_list(list_first))
+    NodeContainer(tree_second).dfs(creator_list(list_second))
 
     my_dist = levenshtrain_distance(list_first, list_second)
     print("Files need around", my_dist, "changes")
     print("Len of first: ", len(list_first))
     print("Len of second: ", len(list_second))
 
-    print((score.write(str(1 - my_dist / max(len(list_first), len(list_second))) + '\n')))
+    score.write(
+        str(1 - my_dist / max(len(list_first), len(list_second))) + '\n'
+    )
